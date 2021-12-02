@@ -19,6 +19,8 @@ type hashiCupsConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	URL      string `json:"url"`
+	PasswordPolicy string `json:"password_policy,omitempty"`
+	PasswordLength int `json:"length,omitempty"`
 }
 
 // pathConfig extends the Vault API with a `/config`
@@ -55,6 +57,15 @@ func pathConfig(b *hashiCupsBackend) *framework.Path {
 				Required:    true,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name:      "URL",
+					Sensitive: false,
+				},
+			},
+			"password_policy": {
+				Type:        framework.TypeString,
+				Description: "The URL for the HashiCups Product API",
+				Required:    true,
+				DisplayAttrs: &framework.DisplayAttributes{
+					Name:      "PasswordPolicy",
 					Sensitive: false,
 				},
 			},
@@ -100,6 +111,7 @@ func (b *hashiCupsBackend) pathConfigRead(ctx context.Context, req *logical.Requ
 		Data: map[string]interface{}{
 			"username": config.Username,
 			"url":      config.URL,
+			"password_policy": config.PasswordPolicy,
 		},
 	}, nil
 }

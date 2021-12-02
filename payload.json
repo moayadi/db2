@@ -1,0 +1,3 @@
+{
+  "policy": "length = 7\nrule \"charset\" {\n  charset = \"abcdefghijklmnopqrstuvwxyz\"\n  min-chars = 2\n}\nrule \"charset\" {\n  charset = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\n  min-chars = 2\n}\nrule \"charset\" {\n  charset = \"0123456789\"\n  min-chars = 2\n}"
+}

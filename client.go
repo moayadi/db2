@@ -31,9 +31,10 @@ func newClient(config *hashiCupsConfig) (*hashiCupsClient, error) {
 		return nil, errors.New("client URL was not defined")
 	}
 
-	c, err := hashicups.NewClient(&config.URL, &config.Username, &config.Password)
-	if err != nil {
-		return nil, err
-	}
-	return &hashiCupsClient{c}, nil
+	//c, err := hashicups.NewClient(&config.URL, &config.Username, &config.Password)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return &hashiCupsClient{c}, nil
+	return &hashiCupsClient{nil}, nil
 }

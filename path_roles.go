@@ -19,6 +19,11 @@ type hashiCupsRoleEntry struct {
 	TokenID  string        `json:"token_id"`
 	TTL      time.Duration `json:"ttl"`
 	MaxTTL   time.Duration `json:"max_ttl"`
+	PasswordPolicy string `json:"password_policy,omitempty"`
+	PasswordLength int `json:"length,omitempty"`
+	SeedPassword string `json:"seed_password"`
+	CurrentPassword string `json:"current_password"`
+	NewPassword string `json:"new_password"`
 }
 
 // toResponseData returns response data for a role
@@ -27,6 +32,10 @@ func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
 		"ttl":      r.TTL.Seconds(),
 		"max_ttl":  r.MaxTTL.Seconds(),
 		"username": r.Username,
+		"password_policy": r.PasswordPolicy,
+		"seed_password": r.SeedPassword,
+		"new_password": r.NewPassword,
+		"current_password": r.CurrentPassword,
 	}
 	return respData
 }
@@ -58,6 +67,26 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 				"max_ttl": {
 					Type:        framework.TypeDurationSecond,
 					Description: "Maximum time for role. If not set or set to 0, will use system default.",
+				},
+				"password_policy": {
+					Type:        framework.TypeString,
+					Description: "The URL for the HashiCups Product API",
+					Required:    true,
+				},
+				"seed_password": {
+					Type:        framework.TypeString,
+					Description: "Initial password for DB2 user",
+					Required:    true,
+				},
+				"current_password": {
+					Type:        framework.TypeString,
+					Description: "Initial password for DB2 user",
+					Required:    false,
+				},
+				"new_password": {
+					Type:        framework.TypeString,
+					Description: "Initial password for DB2 user",
+					Required:    false,
 				},
 			},
 			Operations: map[logical.Operation]framework.OperationHandler{
@@ -123,6 +152,7 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 		return logical.ErrorResponse("missing role name"), nil
 	}
 
+
 	roleEntry, err := b.getRole(ctx, req.Storage, name.(string))
 	if err != nil {
 		return nil, err
@@ -138,6 +168,18 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 		roleEntry.Username = username.(string)
 	} else if !ok && createOperation {
 		return nil, fmt.Errorf("missing username in role")
+	}
+
+	if seedpassword, ok := d.GetOk("seed_password"); ok {
+		roleEntry.SeedPassword = seedpassword.(string)
+	} else if !ok && createOperation {
+		return nil, fmt.Errorf("missing seed password")
+	}
+
+	if passwordPolicy, ok := d.GetOk("password_policy"); ok {
+		roleEntry.PasswordPolicy = passwordPolicy.(string)
+	} else if !ok && createOperation {
+		return nil, fmt.Errorf("missing password policy")
 	}
 
 	if ttlRaw, ok := d.GetOk("ttl"); ok {
