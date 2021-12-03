@@ -6,16 +6,21 @@ import (
 	"fmt"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
+	"time"
 )
 
-const staticRolePath = "role"
+const (
+	staticCredPath = "static-cred/"
+)
+
+
 // pathCredentials extends the Vault API with a `/creds`
 // endpoint for a role. You can choose whether
 // or not certain attributes should be displayed,
 // required, and named.
 func pathCredentials(b *hashiCupsBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: "creds/" + framework.GenericNameRegex("name"),
+		Pattern: staticCredPath + framework.GenericNameRegex("name"),
 		Fields: map[string]*framework.FieldSchema{
 			"name": {
 				Type:        framework.TypeLowerCaseString,
@@ -26,7 +31,6 @@ func pathCredentials(b *hashiCupsBackend) *framework.Path {
 		},
 		Callbacks: map[logical.Operation]framework.OperationFunc{
 			logical.ReadOperation:   b.pathCredentialsRead,
-			logical.UpdateOperation: b.pathCredentialsRead,
 		},
 		HelpSynopsis:    pathCredentialsHelpSyn,
 		HelpDescription: pathCredentialsHelpDesc,
@@ -36,82 +40,108 @@ func pathCredentials(b *hashiCupsBackend) *framework.Path {
 // pathCredentialsRead creates a new HashiCups token each time it is called if a
 // role exists.
 func (b *hashiCupsBackend) pathCredentialsRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	roleName := d.Get("name").(string)
 
-	roleEntry, err := b.getRole(ctx, req.Storage, roleName)
+	name := d.Get("name").(string)
+
+	role, err := b.staticRole(ctx, req.Storage, name)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving role: %w", err)
+		return nil, err
+	}
+	if role == nil {
+		return logical.ErrorResponse("unknown role: %s", name), nil
 	}
 
-	if roleEntry == nil {
-		return nil, errors.New("error retrieving role: role is nil")
+	return &logical.Response{
+		Data: map[string]interface{}{
+			"username":            role.Username,
+			"current_password":    role.CurrentPassword,
+			"ttl":                 role.TTL,
+			"rotation_period":     role.RotationPeriod.Seconds(),
+			"last_vault_rotation": role.LastVaultRotation,
+		},
+	}, nil
+}
+
+
+
+func (s *staticAccount) PasswordTTL() time.Duration {
+	next := s.NextRotationTime()
+	ttl := next.Sub(time.Now()).Round(time.Second)
+	if ttl < 0 {
+		ttl = time.Duration(0)
 	}
+	return ttl
+}
 
-
-	return b.createUserCreds(ctx, req, roleEntry, roleName)
+func (s *staticAccount) NextRotationTime() time.Time {
+	return s.LastVaultRotation.Add(s.RotationPeriod)
 }
 
 // createUserCreds creates a new HashiCups token to store into the Vault backend, generates
 // a response with the secrets information, and checks the TTL and MaxTTL attributes.
-func (b *hashiCupsBackend) createUserCreds(ctx context.Context, req *logical.Request, role *hashiCupsRoleEntry, roleName string) (*logical.Response, error) {
-	token, err := b.createToken(ctx, req.Storage, role)
-	if err != nil {
-		return nil, err
-	}
+//func (b *hashiCupsBackend) pathCredentialsRotate(ctx context.Context, req *logical.Request, d *framework.FieldData, roleName string) (*logical.Response, error) {
+//	name := d.Get("name").(string)
+//
+//	role, err := b.staticRole(ctx, req.Storage, name)
+//	if err != nil {
+//		return nil, err
+//	}
+//	if role == nil {
+//		return logical.ErrorResponse("unknown role: %s", name), nil
+//	}
+//
+//
+//	if role.CurrentPassword == "" {
+//		role.CurrentPassword = role.SeedPassword
+//		println("mycurrentrole is " + role.CurrentPassword)
+//		newpassword, _ := b.generatePassword(ctx, role)
+//		role.NewPassword = newpassword
+//		println("now it is " + role.NewPassword)
+//	}else if role.CurrentPassword != "" {
+//		println("moayad is here")
+//		role.CurrentPassword = role.NewPassword
+//		newpassword, _ := b.generatePassword(ctx, role)
+//		role.NewPassword = newpassword
+//	}
+//
+//// The response is divided into two objects (1) internal data and (2) data.
+//	// If you want to reference any information in your code, you need to
+//	// store it in internal data!
+//	resp := b.Secret(hashiCupsTokenType).Response(map[string]interface{}{
+//		"token":        token.Token,
+//		"token_id":     token.TokenID,
+//		"user_id":      token.UserID,
+//		"username":     token.Username,
+//		"new_password": role.NewPassword,
+//		"current_password": role.CurrentPassword,
+//		"seed_password" : role.SeedPassword,
+//	}, map[string]interface{}{
+//		"token":         token.Token,
+//		"new_password" : role.NewPassword,
+//		"seed_password" : role.SeedPassword,
+//		"current_password": role.CurrentPassword,
+//	})
+//
+//	if role.TTL > 0 {
+//		resp.Secret.TTL = role.TTL
+//	}
+//
+//	return resp, nil
+//}
 
-	if role.CurrentPassword == "" {
-		role.CurrentPassword = role.SeedPassword
-		println("mycurrentrole is " + role.CurrentPassword)
-		newpassword, _ := b.generatePassword(ctx, role)
-		role.NewPassword = newpassword
-		println("now it is " + role.NewPassword)
-	}else if role.CurrentPassword != "" {
-		println("moayad is here")
-		role.CurrentPassword = role.NewPassword
-		newpassword, _ := b.generatePassword(ctx, role)
-		role.NewPassword = newpassword
-	}
+// toResponseData returns response data for a role
+//func (r *hashiCupsToken) toResponseData() map[string]interface{} {
+//	respData := map[string]interface{}{
+//		"ttl":      r.TTL.Seconds(),
+//		"username": r.Username,
+//		"password_policy": r.PasswordPolicy,
+//		"seed_password": r.SeedPassword,
+//		//"new_password": r.NewPassword,
+//		//"current_password": r.CurrentPassword,
+//	}
+//	return respData
+//}
 
-	entry, err := logical.StorageEntryJSON(staticRolePath+roleName, role)
-	//if err != nil {
-	//	return output, err
-	//}
-	if err := req.Storage.Put(ctx, entry); err != nil {
-		println("success adding secrets back")
-	}
-
-
-
-
-
-	// The response is divided into two objects (1) internal data and (2) data.
-	// If you want to reference any information in your code, you need to
-	// store it in internal data!
-	resp := b.Secret(hashiCupsTokenType).Response(map[string]interface{}{
-		"token":        token.Token,
-		"token_id":     token.TokenID,
-		"user_id":      token.UserID,
-		"username":     token.Username,
-		"new_password": role.NewPassword,
-		"current_password": role.CurrentPassword,
-		"seed_password" : role.SeedPassword,
-	}, map[string]interface{}{
-		"token":         token.Token,
-		"new_password" : role.NewPassword,
-		"seed_password" : role.SeedPassword,
-		"current_password": role.CurrentPassword,
-	})
-
-	if role.TTL > 0 {
-		resp.Secret.TTL = role.TTL
-	}
-
-	if role.MaxTTL > 0 {
-		resp.Secret.MaxTTL = role.MaxTTL
-	}
-
-	return resp, nil
-}
 
 // createToken uses the HashiCups client to sign in and get a new token
 func (b *hashiCupsBackend) createToken(ctx context.Context, s logical.Storage, roleEntry *hashiCupsRoleEntry) (*hashiCupsToken, error) {

@@ -16,11 +16,8 @@ const (
 // hashiCupsConfig includes the minimum configuration
 // required to instantiate a new HashiCups client.
 type hashiCupsConfig struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	URL      string `json:"url"`
-	PasswordPolicy string `json:"password_policy,omitempty"`
-	PasswordLength int `json:"length,omitempty"`
+	Hostname string `json:"hostname"`
+	Port string `json:"port"`
 }
 
 // pathConfig extends the Vault API with a `/config`
@@ -31,9 +28,9 @@ type hashiCupsConfig struct {
 // when you read the configuration.
 func pathConfig(b *hashiCupsBackend) *framework.Path {
 	return &framework.Path{
-		Pattern: "config",
+		Pattern: configStoragePath,
 		Fields: map[string]*framework.FieldSchema{
-			"username": {
+			"hostname": {
 				Type:        framework.TypeString,
 				Description: "The username to access HashiCups Product API",
 				Required:    true,
@@ -42,31 +39,13 @@ func pathConfig(b *hashiCupsBackend) *framework.Path {
 					Sensitive: false,
 				},
 			},
-			"password": {
+			"port": {
 				Type:        framework.TypeString,
 				Description: "The user's password to access HashiCups Product API",
 				Required:    true,
 				DisplayAttrs: &framework.DisplayAttributes{
 					Name:      "Password",
 					Sensitive: true,
-				},
-			},
-			"url": {
-				Type:        framework.TypeString,
-				Description: "The URL for the HashiCups Product API",
-				Required:    true,
-				DisplayAttrs: &framework.DisplayAttributes{
-					Name:      "URL",
-					Sensitive: false,
-				},
-			},
-			"password_policy": {
-				Type:        framework.TypeString,
-				Description: "The URL for the HashiCups Product API",
-				Required:    true,
-				DisplayAttrs: &framework.DisplayAttributes{
-					Name:      "PasswordPolicy",
-					Sensitive: false,
 				},
 			},
 		},
@@ -109,9 +88,9 @@ func (b *hashiCupsBackend) pathConfigRead(ctx context.Context, req *logical.Requ
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"username": config.Username,
-			"url":      config.URL,
-			"password_policy": config.PasswordPolicy,
+			"hostname": config.Hostname,
+			"port":      config.Port,
+
 		},
 	}, nil
 }
@@ -132,22 +111,16 @@ func (b *hashiCupsBackend) pathConfigWrite(ctx context.Context, req *logical.Req
 		config = new(hashiCupsConfig)
 	}
 
-	if username, ok := data.GetOk("username"); ok {
-		config.Username = username.(string)
+	if hostname, ok := data.GetOk("hostname"); ok {
+		config.Hostname = hostname.(string)
 	} else if !ok && createOperation {
-		return nil, fmt.Errorf("missing username in configuration")
+		return nil, fmt.Errorf("missing hostname in configuration")
 	}
 
-	if url, ok := data.GetOk("url"); ok {
-		config.URL = url.(string)
+	if port, ok := data.GetOk("port"); ok {
+		config.Port = port.(string)
 	} else if !ok && createOperation {
-		return nil, fmt.Errorf("missing url in configuration")
-	}
-
-	if password, ok := data.GetOk("password"); ok {
-		config.Password = password.(string)
-	} else if !ok && createOperation {
-		return nil, fmt.Errorf("missing password in configuration")
+		return nil, fmt.Errorf("missing port in configuration")
 	}
 
 	entry, err := logical.StorageEntryJSON(configStoragePath, config)

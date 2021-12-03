@@ -26,6 +26,9 @@ enable:
 clean:
 	rm -f ./vault/plugins/vault-plugin-secrets-mock
 
+commands:
+	./commands.sh
+
 fmt:
 	go fmt $$(go list ./...)
 

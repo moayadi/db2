@@ -24,6 +24,7 @@ type hashiCupsBackend struct {
 	*framework.Backend
 	lock   sync.RWMutex
 	client *hashiCupsClient
+	store map[string][]byte
 }
 
 // backend defines the target API backend
@@ -46,10 +47,11 @@ func backend() *hashiCupsBackend {
 			[]*framework.Path{
 				pathConfig(&b),
 				pathCredentials(&b),
+				pathRotateCredentials(&b),
 			},
 		),
 		Secrets: []*framework.Secret{
-			b.hashiCupsToken(),
+			//b.hashiCupsToken(),
 		},
 		BackendType: logical.TypeLogical,
 		Invalidate:  b.invalidate,
@@ -104,6 +106,7 @@ func (b *hashiCupsBackend) getClient(ctx context.Context, s logical.Storage) (*h
 
 	return b.client, nil
 }
+
 
 // backendHelp should contain help information for the backend
 const backendHelp = `

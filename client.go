@@ -19,17 +19,17 @@ func newClient(config *hashiCupsConfig) (*hashiCupsClient, error) {
 		return nil, errors.New("client configuration was nil")
 	}
 
-	if config.Username == "" {
-		return nil, errors.New("client username was not defined")
-	}
-
-	if config.Password == "" {
-		return nil, errors.New("client password was not defined")
-	}
-
-	if config.URL == "" {
-		return nil, errors.New("client URL was not defined")
-	}
+	//if config.Username == "" {
+	//	return nil, errors.New("client username was not defined")
+	//}
+	//
+	//if config.Password == "" {
+	//	return nil, errors.New("client password was not defined")
+	//}
+	//
+	//if config.URL == "" {
+	//	return nil, errors.New("client URL was not defined")
+	//}
 
 	//c, err := hashicups.NewClient(&config.URL, &config.Username, &config.Password)
 	//if err != nil {

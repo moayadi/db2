@@ -9,33 +9,44 @@ import (
 	"github.com/hashicorp/vault/sdk/logical"
 )
 
+
+const (
+	staticRolePath = "static-role/"
+)
+
+
 // hashiCupsRoleEntry defines the data required
 // for a Vault role to access and call the HashiCups
 // token endpoints
 type hashiCupsRoleEntry struct {
 	Username string        `json:"username"`
-	UserID   int           `json:"user_id"`
-	Token    string        `json:"token"`
-	TokenID  string        `json:"token_id"`
 	TTL      time.Duration `json:"ttl"`
-	MaxTTL   time.Duration `json:"max_ttl"`
 	PasswordPolicy string `json:"password_policy,omitempty"`
 	PasswordLength int `json:"length,omitempty"`
 	SeedPassword string `json:"seed_password"`
 	CurrentPassword string `json:"current_password"`
 	NewPassword string `json:"new_password"`
+	// LastVaultRotation represents the last time Vault rotated the password
+	LastVaultRotation time.Time `json:"last_vault_rotation"`
+
+	// RotationPeriod is number in seconds between each rotation, effectively a
+	// "time to live". This value is compared to the LastVaultRotation to
+	// determine if a password needs to be rotated
+	RotationPeriod time.Duration `json:"rotation_period"`
 }
 
 // toResponseData returns response data for a role
 func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
 	respData := map[string]interface{}{
 		"ttl":      r.TTL.Seconds(),
-		"max_ttl":  r.MaxTTL.Seconds(),
 		"username": r.Username,
 		"password_policy": r.PasswordPolicy,
 		"seed_password": r.SeedPassword,
 		"new_password": r.NewPassword,
 		"current_password": r.CurrentPassword,
+		"rotation_period":     r.RotationPeriod.Seconds(),
+		"last_vault_rotation": r.LastVaultRotation,
+
 	}
 	return respData
 }
@@ -48,7 +59,7 @@ func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
 func pathRole(b *hashiCupsBackend) []*framework.Path {
 	return []*framework.Path{
 		{
-			Pattern: "role/" + framework.GenericNameRegex("name"),
+			Pattern: staticRolePath + framework.GenericNameRegex("name"),
 			Fields: map[string]*framework.FieldSchema{
 				"name": {
 					Type:        framework.TypeLowerCaseString,
@@ -64,10 +75,6 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 					Type:        framework.TypeDurationSecond,
 					Description: "Default lease for generated credentials. If not set or set to 0, will use system default.",
 				},
-				"max_ttl": {
-					Type:        framework.TypeDurationSecond,
-					Description: "Maximum time for role. If not set or set to 0, will use system default.",
-				},
 				"password_policy": {
 					Type:        framework.TypeString,
 					Description: "The URL for the HashiCups Product API",
@@ -78,17 +85,8 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 					Description: "Initial password for DB2 user",
 					Required:    true,
 				},
-				"current_password": {
-					Type:        framework.TypeString,
-					Description: "Initial password for DB2 user",
-					Required:    false,
-				},
-				"new_password": {
-					Type:        framework.TypeString,
-					Description: "Initial password for DB2 user",
-					Required:    false,
-				},
 			},
+			ExistenceCheck: b.pathRoleExistanceCheck,
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ReadOperation: &framework.PathOperation{
 					Callback: b.pathRolesRead,
@@ -107,7 +105,7 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 			HelpDescription: pathRoleHelpDescription,
 		},
 		{
-			Pattern: "role/?$",
+			Pattern: staticRolePath + "?$",
 			Operations: map[logical.Operation]framework.OperationHandler{
 				logical.ListOperation: &framework.PathOperation{
 					Callback: b.pathRolesList,
@@ -119,9 +117,38 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 	}
 }
 
+func (b *hashiCupsBackend) pathRoleExistanceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
+	role, err := b.staticRole(ctx, request.Storage, data.Get("name").(string))
+	if err != nil {
+		return false, err
+	}
+	return role != nil, nil
+}
+
+
+func (b *hashiCupsBackend) staticRole(ctx context.Context, s logical.Storage, roleName string) (*hashiCupsRoleEntry,error) {
+	entry, err := s.Get(ctx, staticRolePath+roleName)
+	if err != nil {
+		println(err.Error())
+		return nil, err
+	}
+	if entry == nil {
+		return nil, err
+	}
+
+	var result hashiCupsRoleEntry
+	if err := entry.DecodeJSON(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+
+
 // pathRolesList makes a request to Vault storage to retrieve a list of roles for the backend
 func (b *hashiCupsBackend) pathRolesList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	entries, err := req.Storage.List(ctx, "role/")
+	entries, err := req.Storage.List(ctx, staticRolePath)
 	if err != nil {
 		return nil, err
 	}
@@ -188,16 +215,6 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 		roleEntry.TTL = time.Duration(d.Get("ttl").(int)) * time.Second
 	}
 
-	if maxTTLRaw, ok := d.GetOk("max_ttl"); ok {
-		roleEntry.MaxTTL = time.Duration(maxTTLRaw.(int)) * time.Second
-	} else if createOperation {
-		roleEntry.MaxTTL = time.Duration(d.Get("max_ttl").(int)) * time.Second
-	}
-
-	if roleEntry.MaxTTL != 0 && roleEntry.TTL > roleEntry.MaxTTL {
-		return logical.ErrorResponse("ttl cannot be greater than max_ttl"), nil
-	}
-
 	if err := setRole(ctx, req.Storage, name.(string), roleEntry); err != nil {
 		return nil, err
 	}
@@ -207,7 +224,7 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 
 // pathRolesDelete makes a request to Vault storage to delete a role
 func (b *hashiCupsBackend) pathRolesDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
-	err := req.Storage.Delete(ctx, "role/"+d.Get("name").(string))
+	err := req.Storage.Delete(ctx, staticRolePath+d.Get("name").(string))
 	if err != nil {
 		return nil, fmt.Errorf("error deleting hashiCups role: %w", err)
 	}
@@ -217,7 +234,7 @@ func (b *hashiCupsBackend) pathRolesDelete(ctx context.Context, req *logical.Req
 
 // setRole adds the role to the Vault storage API
 func setRole(ctx context.Context, s logical.Storage, name string, roleEntry *hashiCupsRoleEntry) error {
-	entry, err := logical.StorageEntryJSON("role/"+name, roleEntry)
+	entry, err := logical.StorageEntryJSON(staticRolePath+name, roleEntry)
 	if err != nil {
 		return err
 	}
@@ -239,7 +256,7 @@ func (b *hashiCupsBackend) getRole(ctx context.Context, s logical.Storage, name 
 		return nil, fmt.Errorf("missing role name")
 	}
 
-	entry, err := s.Get(ctx, "role/"+name)
+	entry, err := s.Get(ctx, staticRolePath+name)
 	if err != nil {
 		return nil, err
 	}
@@ -256,6 +273,29 @@ func (b *hashiCupsBackend) getRole(ctx context.Context, s logical.Storage, name 
 	return &role, nil
 }
 
+type roleEntry struct {
+	StaticAccount *staticAccount `json:"static_account" mapstructure:"static_account"`
+}
+
+type staticAccount struct {
+
+	// Username to create or assume management for static accounts
+	Username string `json:"username"`
+
+	// Password is the current password for static accounts. As an input, this is
+	// used/required when trying to assume management of an existing static
+	// account. Return this on credential request if it exists.
+	Password string `json:"password"`
+
+	// LastVaultRotation represents the last time Vault rotated the password
+	LastVaultRotation time.Time `json:"last_vault_rotation"`
+
+	// RotationPeriod is number in seconds between each rotation, effectively a
+	// "time to live". This value is compared to the LastVaultRotation to
+	// determine if a password needs to be rotated
+	RotationPeriod time.Duration `json:"rotation_period"`
+}
+
 const (
 	pathRoleHelpSynopsis    = `Manages the Vault role for generating HashiCups tokens.`
 	pathRoleHelpDescription = `
@@ -266,3 +306,4 @@ You can configure a role to manage a user's token by setting the username field.
 	pathRoleListHelpSynopsis    = `List the existing roles in HashiCups backend`
 	pathRoleListHelpDescription = `Roles will be listed by the role name.`
 )
+
