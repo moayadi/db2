@@ -2,11 +2,11 @@ package secretsengine
 
 import (
 	"context"
-	"fmt"
+	//"fmt"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
 	"time"
-	"errors"
+	//"errors"
 )
 
 const (
@@ -142,27 +142,27 @@ func (s *staticAccount) NextRotationTime() time.Time {
 //	return respData
 //}
 
-
-// createToken uses the HashiCups client to sign in and get a new token
-func (b *hashiCupsBackend) createToken(ctx context.Context, s logical.Storage, roleEntry *hashiCupsRoleEntry) (*hashiCupsToken, error) {
-	client, err := b.getClient(ctx, s)
-	if err != nil {
-		return nil, err
-	}
-
-	var token *hashiCupsToken
-
-	token, err = createToken(ctx, client, roleEntry.Username)
-	if err != nil {
-		return nil, fmt.Errorf("error creating HashiCups token: %w", err)
-	}
-
-	if token == nil {
-		return nil, errors.New("error creating HashiCups token")
-	}
-
-	return token, nil
-}
+//
+//// createToken uses the HashiCups client to sign in and get a new token
+//func (b *hashiCupsBackend) createToken(ctx context.Context, s logical.Storage, roleEntry *hashiCupsRoleEntry) (*hashiCupsToken, error) {
+//	client, err := b.getClient(ctx, s)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	var token *hashiCupsToken
+//
+//	token, err = createToken(ctx, client, roleEntry.Username)
+//	if err != nil {
+//		return nil, fmt.Errorf("error creating HashiCups token: %w", err)
+//	}
+//
+//	if token == nil {
+//		return nil, errors.New("error creating HashiCups token")
+//	}
+//
+//	return token, nil
+//}
 
 const pathCredentialsHelpSyn = `
 Generate a HashiCups API token from a specific Vault role.
