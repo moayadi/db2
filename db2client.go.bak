@@ -2,20 +2,18 @@ package secretsengine
 
 import (
 	"errors"
-
-	//db2client "vault-plugin-secrets-hashicups/db2client"
-	hashicups "github.com/hashicorp-demoapp/hashicups-client-go"
+	db2 "vault-plugin-secrets-hashicups/db2client"
 )
 
 // hashiCupsClient creates an object storing
 // the client.
-type hashiCupsClient struct {
-	*hashicups.Client
+type db2Client struct {
+	*db2.Client
 }
 
 // newClient creates a new client to access HashiCups
 // and exposes it for any secrets or roles to use.
-func newClient(config *hashiCupsConfig) (*hashiCupsClient, error) {
+func newDb2Client(config *hashiCupsConfig) (*db2Client, error) {
 	if config == nil {
 		return nil, errors.New("client configuration was nil")
 	}
@@ -32,10 +30,10 @@ func newClient(config *hashiCupsConfig) (*hashiCupsClient, error) {
 	//	return nil, errors.New("client URL was not defined")
 	//}
 
-	//c, err := hashicups.NewClient(&config.URL, &config.Username, &config.Password)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//return &hashiCupsClient{c}, nil
-	return &hashiCupsClient{nil}, nil
+	c, err := db2.NewClient(&config.Hostname, &config.Port)
+	if err != nil {
+		return nil, err
+	}
+	return &db2Client{c}, nil
+	//return &db2Client{nil}, nil
 }

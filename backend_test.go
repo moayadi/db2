@@ -132,7 +132,7 @@ func (e *testEnv) CleanupUserTokens(t *testing.T) {
 		b := e.Backend.(*hashiCupsBackend)
 		client, err := b.getClient(e.Context, e.Storage)
 		if err != nil {
-			t.Fatal("fatal getting client")
+			t.Fatal("fatal getting db2client")
 		}
 		client.Client.Token = string(token)
 		if err := client.SignOut(); err != nil {

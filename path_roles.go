@@ -24,6 +24,7 @@ type hashiCupsRoleEntry struct {
 	PasswordPolicy string `json:"password_policy,omitempty"`
 	PasswordLength int `json:"length,omitempty"`
 	SeedPassword string `json:"seed_password"`
+	Database string `json:"database"`
 	CurrentPassword string `json:"current_password"`
 	NewPassword string `json:"new_password"`
 	// LastVaultRotation represents the last time Vault rotated the password
@@ -41,7 +42,8 @@ func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
 		"ttl":      r.TTL.Seconds(),
 		"username": r.Username,
 		"password_policy": r.PasswordPolicy,
-		"seed_password": r.SeedPassword,
+		//"seed_password": r.SeedPassword,
+		"database": r.Database,
 		"new_password": r.NewPassword,
 		"current_password": r.CurrentPassword,
 		"rotation_period":     r.RotationPeriod.Seconds(),
@@ -80,9 +82,14 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 					Description: "The URL for the HashiCups Product API",
 					Required:    true,
 				},
-				"seed_password": {
+				"current_password": {
 					Type:        framework.TypeString,
-					Description: "Initial password for DB2 user",
+					Description: "Current password for DB2 user",
+					Required:    true,
+				},
+				"database": {
+					Type:        framework.TypeString,
+					Description: "database to connect to for DB2 user",
 					Required:    true,
 				},
 			},
@@ -197,16 +204,22 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 		return nil, fmt.Errorf("missing username in role")
 	}
 
-	if seedpassword, ok := d.GetOk("seed_password"); ok {
-		roleEntry.SeedPassword = seedpassword.(string)
+	if currentPassword, ok := d.GetOk("current_password"); ok {
+		roleEntry.CurrentPassword = currentPassword.(string)
 	} else if !ok && createOperation {
-		return nil, fmt.Errorf("missing seed password")
+		return nil, fmt.Errorf("missing current password")
 	}
 
 	if passwordPolicy, ok := d.GetOk("password_policy"); ok {
 		roleEntry.PasswordPolicy = passwordPolicy.(string)
 	} else if !ok && createOperation {
 		return nil, fmt.Errorf("missing password policy")
+	}
+
+	if database, ok := d.GetOk("database"); ok {
+		roleEntry.Database = database.(string)
+	} else if !ok && createOperation {
+		return nil, fmt.Errorf("missing database")
 	}
 
 	if ttlRaw, ok := d.GetOk("ttl"); ok {

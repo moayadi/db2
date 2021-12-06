@@ -148,7 +148,7 @@ func createToken(ctx context.Context, c *hashiCupsClient, username string) (*has
 	}, nil
 }
 
-// deleteToken calls the HashiCups client to sign out and revoke the token
+//deleteToken calls the HashiCups client to sign out and revoke the token
 func deleteToken(ctx context.Context, c *hashiCupsClient, token string) error {
 	c.Client.Token = token
 	err := c.SignOut()

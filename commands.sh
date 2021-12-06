@@ -11,13 +11,12 @@ curl \
     --data @payload.json \
     http://127.0.0.1:8200/v1/sys/policies/password/mypolicy
 
-vault write db2/config hostname=moayad.test port=55000
-vault write db2/static-role/myrole username=myusername password_policy=mypolicy seed_password=moayadpasswordseed
-vault write db2/static-role/myrole1 username=myusername password_policy=mypolicy seed_password=moayadpasswordseed
-vault write db2/static-role/myrole2 username=myusername password_policy=mypolicy seed_password=moayadpasswordseed
-vault write db2/static-role/myrole2 username=myusername1 password_policy=mypolicy seed_password=moayadpasswordseed1
+vault write db2/config hostname=moayad.test port=50000
+vault write db2/static-role/myrole username=myusername password_policy=mypolicy database=dojo current_password=mycurrentpassword
 vault read db2/static-role/myrole
 vault list db2/static-role
-vault read db2/static-role/myrole2
-vault read db2/static-cred/myrole2
-#vault read db2/creds/myrole
+vault read db2/static-role/myrole
+vault write -f db2/rotate-cred/myrole
+vault read db2/static-cred/myrole
+
+

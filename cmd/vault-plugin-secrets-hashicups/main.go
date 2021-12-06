@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/go-hclog"
-	hashicups "github.com/hashicorp/vault-guides/plugins/vault-plugin-secrets-hashicups"
+	hashicups "vault-plugin-secrets-hashicups"
 	"github.com/hashicorp/vault/api"
 	"github.com/hashicorp/vault/sdk/plugin"
 )

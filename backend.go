@@ -24,6 +24,7 @@ type hashiCupsBackend struct {
 	*framework.Backend
 	lock   sync.RWMutex
 	client *hashiCupsClient
+	//db2Client *db2Client
 	store map[string][]byte
 }
 

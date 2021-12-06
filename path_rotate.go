@@ -9,8 +9,6 @@ import (
 	//"math"
 	"time"
 
-	//"github.com/hashicorp/errwrap"
-	"github.com/hashicorp/go-secure-stdlib/base62"
 	"github.com/hashicorp/vault/sdk/framework"
 	//"github.com/hashicorp/vault/sdk/helper/consts"
 	//"github.com/hashicorp/vault/sdk/helper/locksutil"
@@ -89,7 +87,7 @@ type setStaticAccountOutput struct {
 
 
 func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logical.Storage, input *setStaticAccountInput) (*logical.Response, error) {
-	if input == nil || input.Role == nil || input.RoleName == "" {
+	if input == nil || input.Role == nil || input.RoleName == "" || input.Role.CurrentPassword == "" {
 		return nil, errors.New("input was empty when attempting to set credentials for static account")
 	}
 
@@ -112,33 +110,26 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 		return nil, errors.New("role doesn't exist")
 	}
 
-	var newPassword string
+	newPassword, _ := b.GeneratePassword(ctx, role)
 
-	if role.CurrentPassword == "" {
-		input.Role.CurrentPassword = input.Role.SeedPassword
-		newPassword, _ := b.GeneratePassword(ctx, role)
-		input.Role.NewPassword = newPassword
-		println("now it is " + role.NewPassword)
-	}else if role.CurrentPassword != "" {
-		input.Role.CurrentPassword = role.NewPassword
-		newPassword, _ := b.GeneratePassword(ctx, role)
-		input.Role.NewPassword = newPassword
-	}
-
-	//newPassword, err = b.GeneratePassword(ctx, role)
-
-	// Update the password remotely.
-	//if err := b.client.UpdatePassword(config.LDAP, input.Role.StaticAccount.DN, newPassword); err != nil {
-	//	return output, err
+	//db2Client, err := b.getClient(ctx, s)
+	//if err != nil {
+	//	return nil, err
 	//}
+	//
+	//err = db2Client.UpdatePassword(config.Hostname, config.Port, role.Database, role.Username, role.CurrentPassword, role.NewPassword)
+	//if err != nil {
+	//	return nil,err
+	//}
+	//use the hostname, port details in the config and the active password and new password to construct a connection string
 
-	// Store updated role information
-	// lvr is the known LastVaultRotation
+	//if successful
+	input.Role.CurrentPassword = newPassword
 	lvr := time.Now()
 	input.Role.LastVaultRotation = lvr
-	input.Role.CurrentPassword = input.Role.NewPassword
-	input.Role.NewPassword = newPassword
-	//output.RotationTime = lvr
+	//if not successful send back error
+
+
 
 	entry, err := logical.StorageEntryJSON(staticRolePath+input.RoleName, input.Role)
 	if err != nil {
@@ -153,7 +144,6 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 	Data: map[string]interface{}{
 	"username":            role.Username,
 	"current_password":    input.Role.CurrentPassword,
-	"new_password":    	   newPassword,
 	"ttl":                 input.Role.TTL,
 	"rotation_period":     input.Role.RotationPeriod.Seconds(),
 	"last_vault_rotation": input.Role.LastVaultRotation,
@@ -163,12 +153,12 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 	}
 
 func (b *hashiCupsBackend) GeneratePassword(ctx context.Context, role *hashiCupsRoleEntry) (string, error) {
-	if role.PasswordPolicy == "" {
-		if role.PasswordLength == 0 {
-			return base62.Random(defaultPasswordLength)
-		}
-		return base62.Random(role.PasswordLength)
-	}
+	//if role.PasswordPolicy == "" {
+	//	if role.PasswordLength == 0 {
+	//		return base62.Random(defaultPasswordLength)
+	//	}
+	//	return base62.Random(role.PasswordLength)
+	//}
 
 	password, err := b.System().GeneratePasswordFromPolicy(ctx, role.PasswordPolicy)
 	if err != nil {
