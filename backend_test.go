@@ -1,4 +1,4 @@
-package secretsengine
+package db2secretengine
 
 import (
 	"context"
@@ -19,7 +19,7 @@ const (
 
 // getTestBackend will help you construct a test backend object.
 // Update this function with your target backend.
-func getTestBackend(tb testing.TB) (*hashiCupsBackend, logical.Storage) {
+func getTestBackend(tb testing.TB) (*db2Backend, logical.Storage) {
 	tb.Helper()
 
 	config := logical.TestBackendConfig()
@@ -32,7 +32,7 @@ func getTestBackend(tb testing.TB) (*hashiCupsBackend, logical.Storage) {
 		tb.Fatal(err)
 	}
 
-	return b.(*hashiCupsBackend), config.StorageView
+	return b.(*db2Backend), config.StorageView
 }
 
 // runAcceptanceTests will separate unit tests from
@@ -129,7 +129,7 @@ func (e *testEnv) CleanupUserTokens(t *testing.T) {
 	}
 
 	for _, token := range e.Tokens {
-		b := e.Backend.(*hashiCupsBackend)
+		b := e.Backend.(*db2Backend)
 		client, err := b.getClient(e.Context, e.Storage)
 		if err != nil {
 			t.Fatal("fatal getting db2client")

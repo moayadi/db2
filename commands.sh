@@ -12,7 +12,7 @@ curl \
     http://127.0.0.1:8200/v1/sys/policies/password/mypolicy
 
 vault write db2/config hostname="10.0.2.2" port=50000
-vault write db2/static-role/myrole username=moayad password_policy=mypolicy database=dojo current_password=vCu5RYrb
+vault write db2/static-role/myrole username=moayad password_policy=mypolicy database=dojo current_password=6IpGrg5
 vault read db2/static-role/myrole
 vault list db2/static-role
 vault read db2/static-role/myrole

@@ -1,4 +1,4 @@
-package secretsengine
+package db2secretengine
 
 import (
 	"context"
@@ -14,16 +14,12 @@ const (
 	staticRolePath = "static-role/"
 )
 
-
-// hashiCupsRoleEntry defines the data required
-// for a Vault role to access and call the HashiCups
-// token endpoints
-type hashiCupsRoleEntry struct {
+// db2RoleEntry defines all the db2 users that are to be managed in the designated db2 database.
+type db2RoleEntry struct {
 	Username string        `json:"username"`
 	TTL      time.Duration `json:"ttl"`
 	PasswordPolicy string `json:"password_policy,omitempty"`
 	PasswordLength int `json:"length,omitempty"`
-	SeedPassword string `json:"seed_password"`
 	Database string `json:"database"`
 	CurrentPassword string `json:"current_password"`
 	NewPassword string `json:"new_password"`
@@ -37,15 +33,14 @@ type hashiCupsRoleEntry struct {
 }
 
 // toResponseData returns response data for a role
-func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
+func (r *db2RoleEntry) toResponseData() map[string]interface{} {
 	respData := map[string]interface{}{
 		"ttl":      r.TTL.Seconds(),
 		"username": r.Username,
 		"password_policy": r.PasswordPolicy,
-		//"seed_password": r.SeedPassword,
 		"database": r.Database,
-		"new_password": r.NewPassword,
-		"current_password": r.CurrentPassword,
+		//"new_password": r.NewPassword,
+		//"current_password": r.CurrentPassword,
 		"rotation_period":     r.RotationPeriod.Seconds(),
 		"last_vault_rotation": r.LastVaultRotation,
 
@@ -58,7 +53,7 @@ func (r *hashiCupsRoleEntry) toResponseData() map[string]interface{} {
 // or not certain attributes should be displayed,
 // required, and named. You can also define different
 // path patterns to list all roles.
-func pathRole(b *hashiCupsBackend) []*framework.Path {
+func pathRole(b *db2Backend) []*framework.Path {
 	return []*framework.Path{
 		{
 			Pattern: staticRolePath + framework.GenericNameRegex("name"),
@@ -124,7 +119,7 @@ func pathRole(b *hashiCupsBackend) []*framework.Path {
 	}
 }
 
-func (b *hashiCupsBackend) pathRoleExistanceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
+func (b *db2Backend) pathRoleExistanceCheck(ctx context.Context, request *logical.Request, data *framework.FieldData) (bool, error) {
 	role, err := b.staticRole(ctx, request.Storage, data.Get("name").(string))
 	if err != nil {
 		return false, err
@@ -133,7 +128,7 @@ func (b *hashiCupsBackend) pathRoleExistanceCheck(ctx context.Context, request *
 }
 
 
-func (b *hashiCupsBackend) staticRole(ctx context.Context, s logical.Storage, roleName string) (*hashiCupsRoleEntry,error) {
+func (b *db2Backend) staticRole(ctx context.Context, s logical.Storage, roleName string) (*db2RoleEntry,error) {
 	entry, err := s.Get(ctx, staticRolePath+roleName)
 	if err != nil {
 		println(err.Error())
@@ -143,7 +138,7 @@ func (b *hashiCupsBackend) staticRole(ctx context.Context, s logical.Storage, ro
 		return nil, err
 	}
 
-	var result hashiCupsRoleEntry
+	var result db2RoleEntry
 	if err := entry.DecodeJSON(&result); err != nil {
 		return nil, err
 	}
@@ -154,7 +149,7 @@ func (b *hashiCupsBackend) staticRole(ctx context.Context, s logical.Storage, ro
 
 
 // pathRolesList makes a request to Vault storage to retrieve a list of roles for the backend
-func (b *hashiCupsBackend) pathRolesList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *db2Backend) pathRolesList(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	entries, err := req.Storage.List(ctx, staticRolePath)
 	if err != nil {
 		return nil, err
@@ -164,7 +159,7 @@ func (b *hashiCupsBackend) pathRolesList(ctx context.Context, req *logical.Reque
 }
 
 // pathRolesRead makes a request to Vault storage to read a role and return response data
-func (b *hashiCupsBackend) pathRolesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *db2Backend) pathRolesRead(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	entry, err := b.getRole(ctx, req.Storage, d.Get("name").(string))
 	if err != nil {
 		return nil, err
@@ -180,7 +175,7 @@ func (b *hashiCupsBackend) pathRolesRead(ctx context.Context, req *logical.Reque
 }
 
 // pathRolesWrite makes a request to Vault storage to update a role based on the attributes passed to the role configuration
-func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *db2Backend) pathRolesWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	name, ok := d.GetOk("name")
 	if !ok {
 		return logical.ErrorResponse("missing role name"), nil
@@ -193,7 +188,7 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 	}
 
 	if roleEntry == nil {
-		roleEntry = &hashiCupsRoleEntry{}
+		roleEntry = &db2RoleEntry{}
 	}
 
 	createOperation := (req.Operation == logical.CreateOperation)
@@ -236,7 +231,7 @@ func (b *hashiCupsBackend) pathRolesWrite(ctx context.Context, req *logical.Requ
 }
 
 // pathRolesDelete makes a request to Vault storage to delete a role
-func (b *hashiCupsBackend) pathRolesDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
+func (b *db2Backend) pathRolesDelete(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	err := req.Storage.Delete(ctx, staticRolePath+d.Get("name").(string))
 	if err != nil {
 		return nil, fmt.Errorf("error deleting hashiCups role: %w", err)
@@ -246,7 +241,7 @@ func (b *hashiCupsBackend) pathRolesDelete(ctx context.Context, req *logical.Req
 }
 
 // setRole adds the role to the Vault storage API
-func setRole(ctx context.Context, s logical.Storage, name string, roleEntry *hashiCupsRoleEntry) error {
+func setRole(ctx context.Context, s logical.Storage, name string, roleEntry *db2RoleEntry) error {
 	entry, err := logical.StorageEntryJSON(staticRolePath+name, roleEntry)
 	if err != nil {
 		return err
@@ -264,7 +259,7 @@ func setRole(ctx context.Context, s logical.Storage, name string, roleEntry *has
 }
 
 // getRole gets the role from the Vault storage API
-func (b *hashiCupsBackend) getRole(ctx context.Context, s logical.Storage, name string) (*hashiCupsRoleEntry, error) {
+func (b *db2Backend) getRole(ctx context.Context, s logical.Storage, name string) (*db2RoleEntry, error) {
 	if name == "" {
 		return nil, fmt.Errorf("missing role name")
 	}
@@ -278,7 +273,7 @@ func (b *hashiCupsBackend) getRole(ctx context.Context, s logical.Storage, name 
 		return nil, nil
 	}
 
-	var role hashiCupsRoleEntry
+	var role db2RoleEntry
 
 	if err := entry.DecodeJSON(&role); err != nil {
 		return nil, err
@@ -310,13 +305,12 @@ type staticAccount struct {
 }
 
 const (
-	pathRoleHelpSynopsis    = `Manages the Vault role for generating HashiCups tokens.`
+	pathRoleHelpSynopsis    = `Manages the Vault role for rotating DB2 user passwords`
 	pathRoleHelpDescription = `
-This path allows you to read and write roles used to generate HashiCups tokens.
-You can configure a role to manage a user's token by setting the username field.
+To be updated
 `
 
-	pathRoleListHelpSynopsis    = `List the existing roles in HashiCups backend`
+	pathRoleListHelpSynopsis    = `List the existing roles in DB2 backend`
 	pathRoleListHelpDescription = `Roles will be listed by the role name.`
 )
 
