@@ -79,17 +79,17 @@ func (b *hashiCupsBackend) invalidate(ctx context.Context, key string) {
 // getClient locks the backend as it configures and creates a
 // a new client for the target API
 func (b *hashiCupsBackend) getClient(ctx context.Context, s logical.Storage) (*hashiCupsClient, error) {
-	b.lock.RLock()
-	unlockFunc := b.lock.RUnlock
-	defer func() { unlockFunc() }()
-
-	if b.client != nil {
-		return b.client, nil
-	}
-
-	b.lock.RUnlock()
-	b.lock.Lock()
-	unlockFunc = b.lock.Unlock
+	//b.lock.RLock()
+	//unlockFunc := b.lock.RUnlock
+	//defer func() { unlockFunc() }()
+	//
+	//if b.client != nil {
+	//	return b.client, nil
+	//}
+	//
+	//b.lock.RUnlock()
+	//b.lock.Lock()
+	//unlockFunc = b.lock.Unlock
 
 	config, err := getConfig(ctx, s)
 	if err != nil {

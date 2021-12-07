@@ -112,12 +112,16 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 
 	newPassword, _ := b.GeneratePassword(ctx, role)
 
+	println("about to change my password")
+
 	db2Client, err := b.getClient(ctx, s)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db2Client.UpdatePassword(config.Hostname, config.Port, role.Database, role.Username, role.CurrentPassword, role.NewPassword)
+	println("I got the db2client ok")
+
+	err = db2Client.UpdatePassword(config.Hostname, config.Port, role.Database, role.Username, role.CurrentPassword, newPassword)
 	if err != nil {
 		return nil,err
 	}
