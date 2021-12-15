@@ -23,7 +23,7 @@ func TestAccUserToken(t *testing.T) {
 	envOptions := &stepwise.MountOptions{
 		RegistryName:    "hashicups",
 		PluginType:      stepwise.PluginTypeSecrets,
-		PluginName:      "vault-plugin-secrets-hashicups",
+		PluginName:      "vault-plugin-secrets-db2",
 		MountPathPrefix: "hashicups",
 	}
 
