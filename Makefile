@@ -15,11 +15,11 @@ endif
 all: fmt build start
 
 build:
-	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vault-plugin-secrets-hashicups cmd/vault-plugin-secrets-hashicups/main.go
+	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/vault-plugin-secrets-db2 cmd/vault-plugin-secrets-db2/main.go
 	GOOS=$(OS) GOARCH="$(GOARCH)" go build -o vault/plugins/example cmd/example/main.go
 
 start:
-	vault server -dev -dev-root-token-id=root -log-level=trace -dev-plugin-dir=./vault/plugins
+	vault server -dev -dev-root-token-id=root -log-level=trace -dev-plugin-dir=./vault/plugins -dev-listen-address="0.0.0.0:8200"
 
 enable:
 	vault secrets enable -path=db2 vault-plugin-secrets-hashicups

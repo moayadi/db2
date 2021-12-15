@@ -8,7 +8,7 @@ import (
 func main() {
 
 
-	hostname := "localhost"
+	hostname := "10.0.2.2"
 	port := "50000"
 
 	result := client.Createconnection(hostname, port, "dojo","moayad", "T5SEEDfd", "vCu5RYrR")

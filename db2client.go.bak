@@ -1,4 +1,4 @@
-package secretsengine
+package db2secretengine
 
 import (
 	"errors"
@@ -13,7 +13,7 @@ type db2Client struct {
 
 // newClient creates a new client to access HashiCups
 // and exposes it for any secrets or roles to use.
-func newDb2Client(config *hashiCupsConfig) (*db2Client, error) {
+func newDb2Client(config *db2Config) (*db2Client, error) {
 	if config == nil {
 		return nil, errors.New("client configuration was nil")
 	}

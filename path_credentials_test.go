@@ -1,4 +1,4 @@
-package secretsengine
+package db2secretengine
 
 import (
 	"context"

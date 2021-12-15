@@ -1,4 +1,4 @@
-package secretsengine
+package db2secretengine
 
 import (
 	"context"
@@ -21,7 +21,7 @@ const (
 	rotateRolePath = "rotate-cred/"
 )
 
-func pathRotateCredentials(b *hashiCupsBackend) *framework.Path {
+func pathRotateCredentials(b *db2Backend) *framework.Path {
 	return &framework.Path{
 			Pattern: rotateRolePath + framework.GenericNameRegex("name"),
 			Fields: map[string]*framework.FieldSchema{
@@ -42,13 +42,13 @@ func pathRotateCredentials(b *hashiCupsBackend) *framework.Path {
 					ForwardPerformanceSecondary: true,
 				},
 			},
-			HelpSynopsis:    "Request to rotate the credentials for a static user account.",
-			HelpDescription: "This path attempts to rotate the credentials for the given OpenLDAP static user account.",
+			HelpSynopsis:    "Request to rotate the credentials for a static db2 user account.",
+			HelpDescription: "This path attempts to rotate the credentials for the given DB2 static user account.",
 
 	}
 }
 
-func (b *hashiCupsBackend) pathRotateRoleCredentialsUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
+func (b *db2Backend) pathRotateRoleCredentialsUpdate(ctx context.Context, req *logical.Request, data *framework.FieldData) (*logical.Response, error) {
 	name := data.Get("name").(string)
 	if name == "" {
 		return logical.ErrorResponse("empty role name attribute given"), nil
@@ -79,14 +79,14 @@ func (b *hashiCupsBackend) pathRotateRoleCredentialsUpdate(ctx context.Context, 
 
 type setStaticAccountInput struct {
 	RoleName string
-	Role     *hashiCupsRoleEntry
+	Role     *db2RoleEntry
 }
 
 type setStaticAccountOutput struct {
 }
 
 
-func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logical.Storage, input *setStaticAccountInput) (*logical.Response, error) {
+func (b *db2Backend) setStaticAccountPassword(ctx context.Context, s logical.Storage, input *setStaticAccountInput) (*logical.Response, error) {
 	if input == nil || input.Role == nil || input.RoleName == "" || input.Role.CurrentPassword == "" {
 		return nil, errors.New("input was empty when attempting to set credentials for static account")
 	}
@@ -112,15 +112,15 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 
 	newPassword, _ := b.GeneratePassword(ctx, role)
 
-	//db2Client, err := b.getClient(ctx, s)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//err = db2Client.UpdatePassword(config.Hostname, config.Port, role.Database, role.Username, role.CurrentPassword, role.NewPassword)
-	//if err != nil {
-	//	return nil,err
-	//}
+	db2Client, err := b.getClient(ctx, s)
+	if err != nil {
+		return nil, err
+	}
+
+		err = db2Client.UpdatePassword(config.Hostname, config.Port, role.Database, role.Username, role.CurrentPassword, newPassword)
+	if err != nil {
+		return nil,err
+	}
 	//use the hostname, port details in the config and the active password and new password to construct a connection string
 
 	//if successful
@@ -152,7 +152,7 @@ func (b *hashiCupsBackend) setStaticAccountPassword(ctx context.Context, s logic
 
 	}
 
-func (b *hashiCupsBackend) GeneratePassword(ctx context.Context, role *hashiCupsRoleEntry) (string, error) {
+func (b *db2Backend) GeneratePassword(ctx context.Context, role *db2RoleEntry) (string, error) {
 	//if role.PasswordPolicy == "" {
 	//	if role.PasswordLength == 0 {
 	//		return base62.Random(defaultPasswordLength)
